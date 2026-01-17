@@ -1,68 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
-
-import Hero from './components/Hero.jsx';
-import Dashboard from './components/Dashboard.jsx';
-
-const koneksiSinyal = io('http://localhost:5000');
+import { AnimatePresence, motion } from 'framer-motion';
+import Hero from './components/Hero';
+import Dashboard from './components/Dashboard';
 
 function App() {
   const [sudahLogin, setSudahLogin] = useState(false);
-  const [serverNyala, setServerNyala] = useState(true);
+  const [posisiMouse, setPosisiMouse] = useState({ x: 0, y: 0 });
 
+  // Update posisi mouse untuk kursor custom (UX Mahal)
   useEffect(function() {
-    koneksiSinyal.on('server_status', function(data) {
-      if (data.online === false) { setServerNyala(false); }
-    });
+    function catatMouse(e) {
+      setPosisiMouse({ x: e.clientX, y: e.clientY });
+    }
+    window.addEventListener("mousemove", catatMouse);
+    return function() { window.removeEventListener("mousemove", catatMouse); }
   }, []);
 
-  if (serverNyala === false) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-10 font-mono">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="border border-red-900 bg-red-900/10 p-12 text-center"
-        >
-          <h1 className="text-2xl font-black text-red-600 uppercase tracking-tighter">Connection Lost</h1>
-          <p className="text-zinc-500 text-xs mt-2 uppercase">Backend Server Offline</p>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative min-h-screen bg-[#050505] text-white flex items-center justify-center overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden cursor-none">
 
-      {/* BACKGROUND UX: Cahaya putih remang-remang yang gerak pelan */}
+      {/* 1. LAYER NOISE (Tekstur) */}
+      <div className="noise"></div>
+
+      {/* 2. LAYER CUSTOM CURSOR (Hanya muncul di PC) */}
       <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.1, 0.2, 0.1]
-        }}
-        transition={{ duration: 10, repeat: Infinity }}
-        className="absolute w-[600px] h-[600px] bg-white blur-[150px] rounded-full pointer-events-none"
+        className="fixed top-0 left-0 w-8 h-8 border border-white rounded-full pointer-events-none z-[10000] hidden md:block"
+        animate={{ x: posisiMouse.x - 16, y: posisiMouse.y - 16 }}
+        transition={{ type: "spring", damping: 30, stiffness: 200 }}
+      />
+      <motion.div
+        className="fixed top-0 left-0 w-1 h-1 bg-white rounded-full pointer-events-none z-[10000] hidden md:block"
+        animate={{ x: posisiMouse.x - 2, y: posisiMouse.y - 2 }}
       />
 
-      {/* Animasi Perpindahan Halaman (AnimatePresence) */}
-      <AnimatePresence mode="wait">
-        {sudahLogin === true ? (
-          <Dashboard key="dashboard" />
-        ) : (
-          <Hero
-            key="hero"
-            tombolLoginDiklik={function() { setSudahLogin(true) }}
-          />
-        )}
-      </AnimatePresence>
+      {/* 3. LAYER CAHAYA (Ambient Glow) */}
+      <motion.div
+        animate={{
+          x: posisiMouse.x - 300,
+          y: posisiMouse.y - 300,
+          scale: [1, 1.1, 1],
+          opacity: [0.2, 0.3, 0.2]
+        }}
+        transition={{ duration: 5, repeat: Infinity }}
+        className="fixed w-[600px] h-[600px] bg-zinc-800/20 blur-[120px] rounded-full pointer-events-none"
+      />
 
-      {/* HUD FOOTER */}
-      <footer className="fixed bottom-8 left-8 right-8 flex justify-between text-[8px] text-zinc-600 tracking-[0.5em] uppercase font-bold">
-        <span>VibeFlow v1.0</span>
+      {/* 4. MAIN APP CONTENT */}
+      <div className="flex flex-col items-center justify-center">
+        <AnimatePresence mode="wait">
+          {sudahLogin === true ? (
+            <Dashboard key="dash" />
+          ) : (
+            <Hero key="hero" tombolLoginDiklik={function() { setSudahLogin(true) }} />
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* FOOTER HUD */}
+      <footer className="fixed bottom-10 left-10 right-10 flex justify-between text-[8px] text-zinc-600 tracking-[0.5em] uppercase font-bold z-50 pointer-events-none">
+        <span>VibeFlow_Terminal_v1.0</span>
         <span className="hidden md:block">Neural Frequency Architecture</span>
         <span>Bali // IDN</span>
       </footer>
+
     </div>
   );
 }
